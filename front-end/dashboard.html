@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Breast Tumor AI — Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #ffd9e6 0%, #ff7aae 100%); min-height:100vh; }
+  .card-hover:hover { transform: translateY(-4px); transition: all 0.25s ease; }
+  .dropzone { border: 2px dashed #fcd5e5; background: rgba(255, 245, 250, 0.5); }
+  .small-muted { font-size: 12px; color: #6b7280; }
+  .ribbon::before { content: "🎗️ "; }
+  .muted-p { color: #6b7280; }
+  .stat-value { font-size: 1.5rem; font-weight: 700; }
+  /* responsive image container */
+  .img-box { width:100%; height: 16rem; display:flex; align-items:center; justify-content:center; overflow:hidden; background:#fff; border-radius:0.5rem; border:1px solid #eef2f7; }
+  .img-box img { width: auto; max-width:100%; max-height:100%; object-fit:contain; }
+  .btn-pink { background: linear-gradient(90deg,#ff82b6,#ff5f9e); }
+</style>
+</head>
+<body>
+<nav class="bg-white shadow-sm border-b border-pink-200">
+  <div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-11 h-11 bg-pink-600 rounded-lg flex items-center justify-center text-white font-bold">BT</div>
+      <div>
+        <div class="text-lg font-semibold">Breast Tumor AI</div>
+        <div class="text-xs muted-p">Histopathology — Clinical Dashboard</div>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-6">
+      <div id="topNavStats" class="text-sm text-gray-600 hidden sm:block">Ready</div>
+      <div class="text-sm text-gray-700" id="doctorName">Dr —</div>
+      <button id="logoutBtn" class="text-sm text-pink-600 hover:text-pink-800">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-7xl mx-auto p-6">
+  
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Left: Upload -->
+    <div class="lg:col-span-1">
+      <div class="bg-white rounded-xl p-6 shadow-sm border border-pink-100">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold ribbon">New Scan</h3>
+          <span class="small-muted">Histopathology</span>
+        </div>
+
+        <form id="uploadForm" class="space-y-4">
+          <div>
+            <label class="text-sm font-medium">Patient Name</label>
+            <input id="patientName" type="text" placeholder="🎀 Mary Smith" required class="mt-1 w-full px-3 py-2 border rounded focus:ring-2 focus:ring-pink-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label class="text-sm font-medium">Patient ID</label>
+            <input id="patientId" type="text" placeholder="P-12 (optional)" class="mt-1 w-full px-3 py-2 border rounded focus:ring-2 focus:ring-pink-500 focus:border-transparent" />
+          </div>
+
+          <div>
+            <label class="text-sm font-medium">Clinical Notes (optional)</label>
+            <textarea id="notes" rows="3" class="mt-1 w-full px-3 py-2 border rounded focus:ring-2 focus:ring-pink-500 focus:border-transparent" ></textarea>
+          </div>
+
+          <div>
+            <label class="text-sm font-medium mb-2 block">Histopathology Image</label>
+            <div id="dropZone" class="dropzone rounded-lg p-4 text-center cursor-pointer border-2 border-dashed border-pink-300 hover:border-pink-500 transition">
+              <input id="mriImage" type="file" accept="image/*" class="hidden" />
+              <div class="flex flex-col items-center gap-2">
+                <svg class="w-12 h-12 text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16l-4-4m0 0l4-4M3 12h18"/></svg>
+                <div class="small-muted">Click to upload histopathology (PNG, JPG) — up to 10MB</div>
+              </div>
+            </div>
+
+            <div id="imagePreview" class="mt-4 hidden">
+              <div class="img-box mb-2">
+                <img id="previewImg" alt="preview" />
+              </div>
+              <p id="fileName" class="small-muted mt-2"></p>
+            </div>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="analyzeBtn" type="submit" class="flex-1 btn-pink text-white py-3 rounded-lg shadow-lg transition duration-200">🔬 Analyze Scan</button>
+            <button id="resetBtn" type="button" class="flex-1 bg-white border border-pink-200 text-pink-600 py-3 rounded-lg">Reset</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Right: Result & recent -->
+    <div class="lg:col-span-2">
+      <div id="loadingPanel" class="bg-white rounded-xl p-6 shadow-sm border border-pink-100 text-center hidden">
+        <div class="inline-block animate-spin rounded-full h-16 w-16 border-4 border-pink-600 border-t-transparent mb-4"></div>
+        <p class="text-lg font-semibold">Analyzing image…</p>
+        <p class="small-muted mt-2">This may take a few seconds</p>
+      </div>
+
+      <div id="resultPanel" class="bg-white rounded-xl p-6 shadow-sm border border-pink-100 hidden"></div>
+
+      <div class="mt-6 bg-white rounded-xl p-4 shadow-sm border border-pink-100">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-semibold">Recent Patients</h4>
+          <a href="#" onclick="showAllScans()" class="text-pink-600">View All →</a>
+        </div>
+        <div id="recentScans" class="space-y-3">
+          <p class="text-gray-500 text-center py-8">No scans yet</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+/* ---------- CONFIG ---------- */
+const API_URL = 'http://localhost:8000';
+const token = localStorage.getItem('token');
+
+/* ---------- ELEMENTS ---------- */
+const fileInput = document.getElementById('mriImage');
+const dropZone = document.getElementById('dropZone');
+const previewImg = document.getElementById('previewImg');
+const imagePreview = document.getElementById('imagePreview');
+const fileNameEl = document.getElementById('fileName');
+const uploadForm = document.getElementById('uploadForm');
+const loadingPanel = document.getElementById('loadingPanel');
+const resultPanel = document.getElementById('resultPanel');
+const totalScansEl = document.getElementById('totalScans');
+const tumorDetectedEl = document.getElementById('tumorDetected');
+const noTumorEl = document.getElementById('noTumor');
+const recentScansEl = document.getElementById('recentScans');
+const doctorNameEl = document.getElementById('doctorName');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+let allScans = [];
+
+/* ---------- HELPERS ---------- */
+function authHeaders(){ return { 'Authorization': `Bearer ${token}` }; }
+function fmtPctNumber(x){
+  if (x === null || x === undefined || isNaN(Number(x))) return '—';
+  // backend returns percentage 0..100
+  const num = Number(x);
+  return Math.min(100, num).toFixed(1) + '%';
+}
+function safePath(p){ if(!p) return ''; return p.startsWith('/') ? p : `/${p}`; }
+
+/* ---------- FILE INPUT UI ---------- */
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    previewImg.src = e.target.result;
+    imagePreview.classList.remove('hidden');
+    fileNameEl.textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+dropZone.addEventListener('click', ()=>fileInput.click());
+dropZone.addEventListener('dragover', e=>{ e.preventDefault(); dropZone.classList.add('border-pink-500','bg-pink-50'); });
+dropZone.addEventListener('dragleave', ()=>dropZone.classList.remove('border-pink-500','bg-pink-50'));
+dropZone.addEventListener('drop', e=>{
+  e.preventDefault();
+  dropZone.classList.remove('border-pink-500','bg-pink-50');
+  const file = e.dataTransfer.files[0];
+  if(file) { fileInput.files = e.dataTransfer.files; handleFile(file); }
+});
+fileInput.addEventListener('change', e=>{ const file=e.target.files[0]; if(file) handleFile(file); });
+
+resetBtn.addEventListener('click', ()=>{
+  uploadForm.reset();
+  imagePreview.classList.add('hidden');
+  resultPanel.classList.add('hidden');
+  analyzeBtn.disabled = false;
+});
+
+/* ---------- API: me / scans ---------- */
+async function loadMe(){
+  try{
+    const res = await fetch(`${API_URL}/me`, { headers: authHeaders() });
+    if(!res.ok) throw new Error('not auth');
+    const d = await res.json();
+    doctorNameEl.textContent = `Dr. ${d.full_name}`;
+  }catch(e){ console.error(e); /* optional: redirect to login */ }
+}
+
+async function loadScans(){
+  try{
+    const res = await fetch(`${API_URL}/scans`, { headers: authHeaders() });
+    if(!res.ok) return;
+    allScans = await res.json();
+    computeStats(allScans);
+    renderRecent(allScans.slice(0,6));
+  }catch(e){ console.error(e); }
+}
+
+function computeStats(scans){
+  const total = scans.length;
+  totalScansEl.textContent = total;
+
+  if(scans.length===0){
+    tumorDetectedEl.textContent = "0%";
+    noTumorEl.textContent = "0%";
+    return;
+  }
+
+  // Latest patient malignant % and confidence
+  const last = scans[scans.length-1];
+  tumorDetectedEl.textContent = fmtPctNumber(last.malignant_percentage ?? last.malignantPct ?? last.malignantPercentage);
+  // backend 'confidence' is already 0..100
+  noTumorEl.textContent = fmtPctNumber(last.confidence ?? last.confidence_pct ?? last.confidencePercentage);
+}
+
+function renderRecent(scans){
+  if(!scans || scans.length===0){
+    recentScansEl.innerHTML='<p class="text-gray-500 text-center py-8">No scans yet</p>';
+    return;
+  }
+  
+ recentScansEl.innerHTML = scans.map(s=>{
+    const date = new Date(s.scan_date).toLocaleString();
+    const pct = fmtPctNumber(s.malignant_percentage ?? s.malignantPct ?? s.malignantPercentage);
+
+    // malignant = pink, benign = green
+    const colorClass = s.prediction === 'Malignant — Cancerous tissue detected'
+        ? 'text-pink-600'
+        : 'text-green-600';
+
+    return `
+      <div class="border rounded-lg p-3 flex items-center justify-between cursor-pointer hover:shadow" onclick="viewScan('${s.id}')">
+        <div>
+          <div class="font-semibold">${s.patient_name || '—'}</div>
+          <div class="small-muted">${s.patient_id || '—'} • ${date}</div>
+        </div>
+        <div class="text-right">
+          <div class="text-sm ${colorClass} font-semibold">${s.prediction}</div>
+          <div class="small-muted mt-1">Malignant ${pct}</div>
+        </div>
+      </div>
+    `;
+}).join('');
+
+
+}
+
+/* ---------- SHOW RESULT ---------- */
+function showResult(data){
+  resultPanel.classList.remove('hidden');
+  const imgUrl = data.image_url ? (API_URL + (data.image_url.startsWith('/') ? data.image_url : '/' + data.image_url)) : '';
+  const gradUrl = data.gradcam_url ? (API_URL + (data.gradcam_url.startsWith('/') ? data.gradcam_url : '/' + data.gradcam_url)) : '';
+
+  resultPanel.innerHTML = `
+    <div class="flex items-start justify-between">
+      <div>
+        <h3 class="text-xl font-semibold mb-1">Analysis Complete</h3>
+        <div class="small-muted mb-3">Scan ID: <strong>${data.id ?? '—'}</strong></div>
+      </div>
+      <div class="text-right small-muted">Date: ${new Date(data.scan_date || Date.now()).toLocaleString()}</div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-4 mt-3">
+      <div>
+        <p class="text-sm muted-p">Patient</p>
+        <p class="font-semibold">${data.patient_name || '—'}</p>
+        <p class="small-muted mt-2">ID: ${data.patient_id || '—'}</p>
+      </div>
+
+     <div>
+        <p class="text-sm muted-p">Prediction</p>
+<p class="text-lg font-bold ${
+  data.prediction === 'Benign No malignant cells detected'
+    ? 'text-green-600'
+    : 'text-pink-600'
+}">
+  ${data.prediction}
+</p>
+
+</p>
+
+      </div>
+
+
+      <div>
+        <p class="text-sm muted-p">Confidence</p>
+        <p class="text-lg font-bold text-gray-800">${fmtPctNumber(data.confidence)}</p>
+        <p class="text-sm muted-p mt-2">Malignant patches: <strong>${fmtPctNumber(data.malignant_percentage)}</strong></p>
+      </div>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-4 mt-6">
+      <div>
+        <p class="text-sm muted-p mb-2">Original Image</p>
+        <div class="img-box"><img src="${imgUrl}" alt="original" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;400&quot; height=&quot;200&quot;><rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;%23fff&quot; /><text x=&quot;50%&quot; y=&quot;50%&quot; dominant-baseline=&quot;middle&quot; text-anchor=&quot;middle&quot; fill=&quot;%23ccc&quot; font-size=&quot;14&quot;>No image</text></svg>'" /></div>
+      </div>
+
+      <div>
+        <p class="text-sm muted-p mb-2">AI Focus Area (Grad-CAM)</p>
+        <div class="img-box"><img src="${gradUrl}" alt="gradcam" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; width=&quot;400&quot; height=&quot;200&quot;><rect width=&quot;100%&quot; height=&quot;100%&quot; fill=&quot;%23fff&quot; /><text x=&quot;50%&quot; y=&quot;50%&quot; dominant-baseline=&quot;middle&quot; text-anchor=&quot;middle&quot; fill=&quot;%23ccc&quot; font-size=&quot;14&quot;>No image</text></svg>'" /></div>
+      </div>
+    </div>
+
+    <div class="flex gap-3 mt-4">
+      <button id="downloadPdfBtn" class="flex-1 bg-green-600 text-white py-2 rounded">📄 Download PDF Report</button>
+      <button id="newScanBtn" class="flex-1 bg-gray-700 text-white py-2 rounded">➕ New Scan</button>
+    </div>
+  `;
+
+  // wire buttons
+  document.getElementById('newScanBtn').addEventListener('click', ()=> {
+    uploadForm.reset();
+    imagePreview.classList.add('hidden');
+    resultPanel.classList.add('hidden');
+    analyzeBtn.disabled = false;
+  });
+
+  document.getElementById('downloadPdfBtn').addEventListener('click', ()=> {
+    if(!data.id) return alert('No scan id');
+    downloadReport(data.id);
+  });
+}
+
+/* ---------- UPLOAD FORM SUBMIT ---------- */
+uploadForm.addEventListener('submit', async (e)=>{
+  e.preventDefault();
+
+  const f = fileInput.files[0];
+  if(!f){ alert('Please select an image'); return; }
+
+  const patient_name = document.getElementById('patientName').value.trim();
+  const patient_id = document.getElementById('patientId').value.trim();
+  const notes = document.getElementById('notes').value.trim() || '';
+
+  const fd = new FormData();
+  fd.append('file', f);
+  fd.append('patient_name', patient_name || '');
+  fd.append('patient_id', patient_id || '');
+  fd.append('notes', notes);
+
+  // UI
+  loadingPanel.classList.remove('hidden');
+  resultPanel.classList.add('hidden');
+  analyzeBtn.disabled = true;
+
+  try{
+    const res = await fetch(`${API_URL}/predict`, {
+      method: 'POST',
+      body: fd,
+      headers: { 'Authorization': `Bearer ${token}` } // keep content-type automatic
+    });
+
+    // read response (try parse JSON even if non-ok for friendly error)
+    const text = await res.text();
+    let payload;
+    try { payload = JSON.parse(text); } catch { payload = null; }
+
+    if(!res.ok){
+      const detail = payload?.detail ?? text ?? 'Prediction failed';
+      throw new Error(detail);
+    }
+
+    const r = payload;
+
+    // Normalize possible keys (different naming)
+    const malignant = r.malignant_percentage ?? r.malignantPct ?? r.malignantPercentage ?? r.malignant ?? 0;
+    const confidence = r.confidence ?? r.confidence_pct ?? r.confidencePercentage ?? 0;
+
+    // show result
+    showResult({
+      id: r.scan_id,
+      image_url: r.image_url,
+      gradcam_url: r.gradcam_url,
+      prediction: r.prediction,
+      confidence: confidence,
+      malignant_percentage: malignant,
+      patient_name,
+      patient_id,
+      scan_date: r.scan_date
+    });
+
+    // refresh list+stats
+    await loadScans();
+  }catch(err){
+    console.error(err);
+    alert(err.message || 'Prediction failed');
+  }finally{
+    loadingPanel.classList.add('hidden');
+    analyzeBtn.disabled = false;
+  }
+});
+
+/* ---------- REPORT DOWNLOAD ---------- */
+async function downloadReport(id){
+  try{
+    const res = await fetch(`${API_URL}/download-report/${id}`, { headers: authHeaders() });
+    if(!res.ok) throw new Error('Report not found');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `Report_${id}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    window.URL.revokeObjectURL(url);
+  }catch(e){
+    console.error(e);
+    alert('Download failed');
+  }
+}
+
+/* ---------- view scan ---------- */
+function viewScan(id){
+  const scan = allScans.find(s => String(s.id) === String(id));
+  if(scan){
+    showResult(scan);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    alert('Scan not found locally — reload list');
+    loadScans();
+  }
+}
+
+function showAllScans(){ renderRecent(allScans); }
+
+/* ---------- Logout ---------- */
+document.getElementById('logoutBtn').addEventListener('click', ()=> {
+  localStorage.removeItem('token');
+  localStorage.removeItem('doctor');
+  window.location.href = 'index.html';
+});
+
+/* ---------- INIT ---------- */
+(async function init(){
+  await loadMe();
+  await loadScans();
+})();
+</script>
+</body>
+</html>

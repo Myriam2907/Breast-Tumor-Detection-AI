@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.env
+*.venv
+venv/
+Lib/
+Scripts/
+Include/
+pyvenv.cfg
+
+# Jupyter
+.ipynb_checkpoints
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VSCode
+.vscode/
+
+# Logs
+*.log
+Breast_Tumor/
+__pycache__/
+*.pyc
+*.pyo
+venv/
+Lib/
+Scripts/
+*.log
+model/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Model weights & training artifacts
+Tumor_Detect/
+reports/
+uploads/
+IDC_regular_ps50_idx5/
+dataset/
+
+# Cache + temporary
+__pycache__/
+*.pyc
+*.db
+*.log
+
+# Local files
+app_data.db
+.env
