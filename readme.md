@@ -30,7 +30,7 @@ This project provides a full-stack solution for medical professionals to analyze
 ![Benign](./demo_screenshots/Asia_2nd.JPG)  
 
 ### Case: Malignant
-![Malignant](./demo_screenshots/Defne.JPG)  
+![Malignant](./demo_screenshots/Defne_ma.JPG)  
 
 ### PDF Report Sample
 ![PDF Report](./demo_screenshots/report_asia.JPG)  
